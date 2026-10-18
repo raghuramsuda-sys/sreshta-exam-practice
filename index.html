@@ -578,11 +578,13 @@ footer.note{text-align:center; font-size:12.5px; color:#5a68a0; font-weight:600;
 .pin-dots i{ width:18px; height:18px; border-radius:50%; border:2.5px solid #3b1163; background:transparent; }
 .pin-dots i.filled{ background:#3b1163; }
 /* option selected state (choose-now, change freely before finishing) */
-.opt.sel{ border-color:#2e7d32; background:#e8f5e9; box-shadow:0 0 0 2px #2e7d32 inset; }
+.opt.sel{ border-color:#7c4dff; background:#f3eafd; box-shadow:0 0 0 2px #7c4dff inset; }
+.opt.sel .olet{ background:#7c4dff; color:#fff; }
 /* paper progress */
 .epbar{ height:10px; background:#efe7f7; border-radius:99px; overflow:hidden; margin:8px 0 4px; }
 .epbar i{ display:block; height:100%; background:linear-gradient(90deg,#ff8fb5,#a55eea); border-radius:99px; transition:width .3s; }
 .ep-qhead{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+.ep-norightwrong{ background:#fff; border:2px solid #e2d7f2; color:#5b2ea6; border-radius:99px; padding:6px 12px; font-size:13px; font-weight:700; text-align:center; margin:8px 0 0; }
 .ep-chip{ display:inline-block; background:#f3eafd; color:#5b2ea6; border-radius:99px; padding:3px 10px; font-size:12.5px; font-weight:700; margin:2px 3px 2px 0; }
 .ep-chip.date{ background:#e3f2fd; color:#1565c0; }
 .ep-chip.warn{ background:#fff3e0; color:#e65100; }
@@ -655,8 +657,11 @@ button.dcard{ font:inherit; text-align:left; width:100%; }
 .trk-go{ flex:0 0 auto; color:#8a7ba8; font-weight:800; }
 
 </style>
+<style>#islandBackBtn{position:fixed;bottom:calc(env(safe-area-inset-bottom, 0px) + 10px);left:10px;z-index:2147483000;background:#3B1163;border:1.5px solid rgba(255,201,77,.85);color:#F3DFA7;border-radius:999px;padding:9px 14px;font-weight:700;font-size:14px;line-height:1;text-decoration:none;box-shadow:0 4px 14px rgba(10,2,28,.45);min-height:44px;display:inline-flex;align-items:center;box-sizing:border-box}</style>
 </head>
 <body>
+<a id="islandBackBtn" href="https://raghuramsuda-sys.github.io/sreshta-universe/" aria-label="Back to Starlight Island dashboard">&#8592; Island</a>
+<script>(function(){var b=document.getElementById("islandBackBtn");if(!b)return;function upd(){var on=document.querySelector(".screen.on,.scr.on");var show=!on||on.id==="scr-access"||on.id==="scr-home";b.style.display=show?"inline-flex":"none";}upd();new MutationObserver(upd).observe(document.documentElement,{attributes:true,attributeFilter:["class"],subtree:true});})();</script>
 <div id="app">
 
   <!-- ===== ACCESS: who is playing? ===== -->
@@ -1301,7 +1306,7 @@ function genFV(easy){
   } else {
     var pi3 = ri(0,3); var dA = ds[pi3]; var pl3 = PLACES[3-pi3];
     var piB = (pi3+ri(1,3))%4; var dB = ds[piB];
-    if(dA===0 || dB===0) return genFV(easy);
+    if(dA===0 || dB===0 || pl3.v===1 || PLACES[3-piB].v===1 || dA===1) return genFV(easy);
     var correct = num(dA*pl3.v)+" and "+dB;
     return mkQ("In "+num(n)+": place value of "+dA+" = ? and face value of "+dB+" = ?", pvVisual(n), correct,
       [ num(dA)+" and "+dB, num(dA*pl3.v)+" and "+num(dB*PLACES[3-piB].v), num(pl3.v)+" and "+dB ], "fv", "sums",
@@ -1317,7 +1322,7 @@ function genEXP(easy){
     function js(arr){ return arr.filter(function(x){return x>0;}).map(num).join(" + "); }
     var cands=[ js([p[0], d[1]*10, p[2], p[3]]), js([p[0], p[1], d[2], p[3]]),
       js([p[0], p[1], p[2], d[3]*10]), js([d[0]*100, p[1], p[2], p[3]]),
-      js([p[0], d[1]*1000, p[2], p[3]]), js(expParts(n).slice().reverse()) ];
+      js([p[0], d[1]*1000, p[2], p[3]]), js([p[0]+1000, p[1], p[2], p[3]]) ];
     return mkQ("What is the expanded form of "+num(n)+"?", "", expString(n), cands, "exp", "sums",
       "Break "+num(n)+" by places: "+expString(n)+".", "What is the expanded form of "+n+"?");
   } else if(type===1){
@@ -1389,9 +1394,9 @@ TOP['digit-numbers'] = T("digit-numbers","Digit Numbers","🔟",[
     function(){ var mode=ri(0,1);
       if(mode===0){ var n=ri(1000,9999); return mkQ("How many DIGITS does the number "+num(n)+" have?", "", 4, [3,5,2], "dig-read","sums",
         num(n)+" is written with 4 digits: "+(""+n).split("").join(", ")+".", "How many digits does "+n+" have?"); }
-      var a=ri(101,999), b=ri(1000,9999), c=ri(11,99), d=ri(1000,9999); if(d===b) d=b+7;
-      return mkQ("Which of these numbers has exactly 4 digits?", "", b, [a,c,d===b?b+13:d], "dig-read","sums",
-        num(b)+" has 4 digits. "+num(a)+" has 3, "+num(c)+" has 2.", "Which number has exactly 4 digits?"); }),
+      var a=ri(101,999), b=ri(1000,9999), c=ri(11,99), d=ri(10000,99999);
+      return mkQ("Which of these numbers has exactly 4 digits?", "", b, [a,c,d], "dig-read","sums",
+        num(b)+" has 4 digits. "+num(a)+" has 3, "+num(c)+" has 2, "+num(d)+" has 5.", "Which number has exactly 4 digits?"); }),
   S("Number Names","dig-names","Number names write a number in WORDS. 2,340 = two thousand three hundred forty.",
     "Number names. Two thousand three hundred forty is the name of 2340.",
     vTxt("<div style='font-size:22px; font-weight:800;'>2,340</div><div>🗣️ <b>two thousand, three hundred forty</b></div>"),
@@ -1502,9 +1507,11 @@ TOP['ordering'] = T("ordering","Ordering of Numbers","🔼",[
     function(){ var mode=ri(0,1);
       var a=ri(1001,9999); var b=a; while(b===a) b=ri(1001,9999);
       var big=Math.max(a,b), small=Math.min(a,b);
-      if(mode===0) return mkQ("Which number is BIGGER: "+num(a)+" or "+num(b)+"?", "", big, [small], "ord-compare","sums",
-        "Compare place by place from the left. "+num(big)+" wins!", "Which number is bigger, "+a+" or "+b+"?");
-      return mkQ("Which number is SMALLER: "+num(a)+" or "+num(b)+"?", "", small, [big], "ord-compare","sums",
+      if(mode===0){ var bd=[small]; [big-1,big-10,big-100].forEach(function(x){ if(x>0 && bd.indexOf(x)<0) bd.push(x); });
+        return mkQ("Which number is BIGGER: "+num(a)+" or "+num(b)+"?", "", big, bd.slice(0,3), "ord-compare","sums",
+          "Compare place by place from the left. "+num(big)+" wins!", "Which number is bigger, "+a+" or "+b+"?"); }
+      var sd=[big]; [small+1,small+10,small+100].forEach(function(x){ if(sd.indexOf(x)<0) sd.push(x); });
+      return mkQ("Which number is SMALLER: "+num(a)+" or "+num(b)+"?", "", small, sd.slice(0,3), "ord-compare","sums",
         "Compare place by place from the left. "+num(small)+" is smaller.", "Which number is smaller, "+a+" or "+b+"?"); }),
   S("Ascending Order","ord-asc","Ascending = smallest to biggest, like climbing stairs UP! 🪜",
     "Ascending order. Smallest to biggest, like climbing stairs up.",
@@ -1516,6 +1523,7 @@ TOP['ordering'] = T("ordering","Ordering of Numbers","🔼",[
       var wrong1=ns.map(num).join(", "); if(wrong1===correct) wrong1=sorted.slice().reverse().map(num).join(", ");
       var sw=sorted.slice(); var t=sw[1]; sw[1]=sw[2]; sw[2]=t; var wrong2=sw.map(num).join(", "); if(wrong2===correct) wrong2=sorted.slice().reverse().map(num).join(", ");
       var sw3=sorted.slice(); var t3=sw3[0]; sw3[0]=sw3[1]; sw3[1]=t3; var wrong3=sw3.map(num).join(", "); if(wrong3===correct||wrong3===wrong2) wrong3=sorted.slice().reverse().map(num).join(", ");
+      if(wrong1===wrong2 || wrong1===wrong3) wrong1=sorted.slice(1).concat(sorted[0]).map(num).join(", ");
       return mkQ("Put in ASCENDING order (smallest → biggest): "+ns.map(num).join(", "), "", correct, [wrong1, wrong2, wrong3], "ord-asc","sums",
         "Smallest first: "+correct+".", "Put these in ascending order: "+ns.join(", ")+"."); }),
   S("Descending Order & Between","ord-desc","Descending = biggest to smallest, like sliding DOWN! 🛝 Between sits in the middle!",
@@ -1532,6 +1540,7 @@ TOP['ordering'] = T("ordering","Ordering of Numbers","🔼",[
       var wrong1=ns.map(num).join(", "); if(wrong1===correct) wrong1=sorted.slice().reverse().map(num).join(", ");
       var sw=sorted.slice(); var t=sw[0]; sw[0]=sw[1]; sw[1]=t; var wrong2=sw.map(num).join(", "); if(wrong2===correct) wrong2=sorted.slice().reverse().map(num).join(", ");
       var sw3=sorted.slice(); var t3=sw3[2]; sw3[2]=sw3[3]; sw3[3]=t3; var wrong3=sw3.map(num).join(", "); if(wrong3===correct||wrong3===wrong2) wrong3=sorted.slice().reverse().map(num).join(", ");
+      if(wrong1===wrong2 || wrong1===wrong3) wrong1=sorted.slice(1).concat(sorted[0]).map(num).join(", ");
       return mkQ("Put in DESCENDING order (biggest → smallest): "+ns.map(num).join(", "), "", correct, [wrong1, wrong2, wrong3], "ord-desc","sums",
         "Biggest first: "+correct+".", "Put these in descending order: "+ns.join(", ")+"."); })
 ],[
@@ -1646,7 +1655,7 @@ TOP['roman-numerals'] = T("roman-numerals","Roman Numerals","🏛️",[
       if(mode===0) return mkQ("Write "+n+" in Roman numerals", "", toRoman(n), [toRoman(n+1<=50?n+1:n-1), toRoman(Math.max(1,n-2)), toRoman(n+10<=59?n+10:n-10)], "rom-write","sums",
         n+" = "+toRoman(n)+". Build it: tens first, then ones.", "Write "+n+" in Roman numerals.");
       var m=n; while(m===n) m=ri(11,50); var big=Math.max(n,m);
-      return mkQ("Which is BIGGER: "+toRoman(n)+" or "+toRoman(m)+"?", "", toRoman(big), [toRoman(Math.min(n,m)), toRoman(big+3), "Both are equal"], "rom-write","sums",
+      return mkQ("Which is BIGGER: "+toRoman(n)+" or "+toRoman(m)+"?", "", toRoman(big), [toRoman(Math.min(n,m)), toRoman(Math.min(n,m)-1), "Both are equal"], "rom-write","sums",
         toRoman(n)+" = "+n+" and "+toRoman(m)+" = "+m+". "+big+" is bigger, so "+toRoman(big)+" wins.", "Which is bigger, "+toRoman(n)+" or "+toRoman(m)+"?"); })
 ],[
   function(){ var n=ri(12,30); var reps=[toRoman(n), ""+n, numWords(n)]; var oddR=toRoman(n+1);
@@ -1678,7 +1687,9 @@ function colMissingAdd(sub){
     if(hideA) shownA[col]="□"; else shownB[col]="□";
     var ans = hideA? da[col] : db[col];
     var txt="Column Puzzle! "+shownA.join("")+" + "+shownB.join("")+" = "+num(s)+". What digit is □?";
-    return mkQ(txt, "", ans, [(ans+3)%10, (ans+5)%10, ds[col]], sub, "sums",
+    var dcands=[(ans+3)%10, (ans+5)%10, ds[col], (ans+7)%10, (ans+1)%10, (ans+9)%10, (ans+2)%10, (ans+4)%10], dc=[], dseen={};
+    for(var di2=0; di2<dcands.length && dc.length<3; di2++){ if(dcands[di2]!==ans && !dseen[dcands[di2]]){ dseen[dcands[di2]]=1; dc.push(dcands[di2]); } }
+    return mkQ(txt, "", ans, dc, sub, "sums",
       "Look at that column: the digits there must add up (with the sum's digit "+ds[col]+"). □ = "+ans+".", txt);
   };
 }
@@ -1842,7 +1853,7 @@ TOP['sub-properties'] = T("sub-properties","Properties of Subtraction","⚖️",
   S("Order Matters in Subtraction","sp-order","Careful! Unlike addition, swapping numbers in subtraction CHANGES the answer!",
     "Order matters in subtraction. Swapping changes the answer.",
     vTxt("<div style='font-size:20px;'>9 − 4 = <b>5</b> but 4 − 9? 🚫 Too small!</div><div>Bigger number must come FIRST!</div>"),
-    function(){ var pr=genPair([300,999],[100,899],3,function(a,b){return a>b;});
+    function(){ var pr=genPair([300,999],[100,899],3,function(a,b){return a>b && a!==2*b;});
       var a=pr[0], b=pr[1];
       return mkQ("Which subtraction is CORRECT and possible?", "", num(a)+" − "+num(b)+" = "+num(a-b),
         [ num(b)+" − "+num(a)+" = "+num(a-b), num(a)+" − "+num(b)+" = "+num(b), num(a)+" + "+num(b)+" = "+num(a-b) ], "sp-order","sums",
@@ -1967,9 +1978,9 @@ TOP['mul-tables-2-10'] = T("mul-tables-2-10","Multiplication Tables 2 to 10","�
   thinkMistakeTable("mt-facts"),
   thinkMissingBoxMul([2,10],[3,12],"mt-missing"),
   thinkOddNumeric("mt-facts"),
-  function(){ var t=ri(3,9);
+  function(){ var t=ri(3,9); var set={}; while(Object.keys(set).length<3){ set[t*ri(3,12)]=1; }
     return mkQ("Odd One Out! Three are in the table of "+t+". One is NOT. Which one?", "", (function(){ var n=t*ri(3,12)+1; return n%t===0? n+1 : n; })(),
-      [t*ri(3,12), t*ri(4,11), t*ri(5,10)], "mt-facts","thinking",
+      Object.keys(set).map(function(k){ return +k; }), "mt-facts","thinking",
       "Multiples of "+t+" divide exactly by "+t+". The odd one leaves a remainder!", "Odd one out! Which is not in the table of "+t+"?", {thinkType:"odd"}); }
 ]);
 TOP['mul-1digit-p1'] = T("mul-1digit-p1","Multiplying by a 1-Digit Number — Part 1","✖️",[
@@ -2122,9 +2133,9 @@ TOP['mul-tables-11-20'] = T("mul-tables-11-20","Multiplication Tables 11 to 20",
 ],[
   thinkMistakeTable("mt11-a"),
   thinkMissingBoxMul([11,20],[3,12],"mt11-b"),
-  function(){ var t=ri(11,20);
+  function(){ var t=ri(11,20); var set={}; while(Object.keys(set).length<3){ set[t*ri(3,11)]=1; }
     return mkQ("Odd One Out! Three are in the table of "+t+". One is NOT. Which one?", "", (function(){ var n=t*ri(3,11)+2; return n%t===0? n+1 : n; })(),
-      [t*ri(3,11), t*ri(4,10), t*ri(5,9)], "mt11-a","thinking",
+      Object.keys(set).map(function(k){ return +k; }), "mt11-a","thinking",
       "Multiples of "+t+" divide exactly by "+t+". The odd one does not!", "Odd one out! Which is not in the table of "+t+"?", {thinkType:"odd"}); },
   thinkOddNumeric("mt11-story")
 ]);
@@ -2234,7 +2245,7 @@ TOP['div-properties'] = T("div-properties","Properties of Division","⚖️",[
   S("Division Does Not Swap","dp-order","Careful! Division does NOT swap like multiplication: 12 ÷ 3 ≠ 3 ÷ 12!",
     "Division does not swap. Twelve divided by 3 is not 3 divided by 12.",
     vTxt("<div style='font-size:20px;'>12 ÷ 3 = <b>4</b> · 3 ÷ 12 = 🚫 (too small!)</div>"),
-    function(){ var dvs=ri(2,9), q=ri(3,12), dvd=dvs*q;
+    function(){ var dvs=ri(2,9), q=ri(3,12); while(q===dvs) q=ri(3,12); var dvd=dvs*q;
       return mkQ("Which division gives the answer "+q+"?", "", dvd+" ÷ "+dvs, [dvs+" ÷ "+dvd, dvd+" ÷ "+q, q+" ÷ "+dvd], "dp-order","sums",
         dvd+" ÷ "+dvs+" = "+q+". The BIG number must be divided, not the small one!", "Which division gives "+q+"?"); })
 ],[
@@ -2327,7 +2338,9 @@ TOP['div-relationship'] = T("div-relationship","Divisor, Dividend, Quotient and 
   S("The Four Names","drel-names","DIVIDEND (the number shared) ÷ DIVISOR (the sharer) = QUOTIENT, with a REMAINDER left!",
     "The four names. Dividend, divisor, quotient, remainder.",
     vTxt("<div style='font-size:19px;'>29 ÷ 4 = 7, remainder 1</div><div>29 = <b>Dividend</b> · 4 = <b>Divisor</b> · 7 = <b>Quotient</b> · 1 = <b>Remainder</b></div>"),
-    function(){ var dvs=ri(3,9), q=ri(3,12), r=ri(0,dvs-1), dvd=dvs*q+r;
+    function(){ var dvs=ri(3,9), q=ri(3,12); while(q===dvs) q=ri(3,12);
+      var r=ri(1,dvs-1); while(r===q) r=ri(1,dvs-1);
+      var dvd=dvs*q+r;
       var names=[["Dividend",dvd],["Divisor",dvs],["Quotient",q],["Remainder",r]];
       var which=pick(names);
       return mkQ("In "+dvd+" ÷ "+dvs+" = "+q+(r? " remainder "+r : "")+", what do we call the number "+which[1]+"?", "", which[0], names.filter(function(x){return x[0]!==which[0];}).map(function(x){return x[0];}), "drel-names","sums",
@@ -2381,7 +2394,7 @@ TOP['frac-intro'] = T("frac-intro","What is a Fraction?","🍕",[
     vTxt("<div style='font-size:20px;'>🍕 1/2 of a pizza is BIGGER than 1/4 of the same pizza!</div><div>More parts → each part is smaller.</div>"),
     function(){ var mode=ri(0,1);
       if(mode===0){ var b=pick([2,3,4,6,8]);
-        return mkQ("What fraction is ONE part of a whole cut into "+b+" EQUAL parts?", "", "1/"+b, ["1/"+(b+1), b+"/1", "1/2"], "fr-half","sums",
+        return mkQ("What fraction is ONE part of a whole cut into "+b+" EQUAL parts?", "", "1/"+b, ["1/"+(b+1), b+"/1", b===2? "1/4" : "1/2"], "fr-half","sums",
           "One part out of "+b+" equal parts is 1/"+b+".", "What is one part out of "+b+" equal parts?"); }
       return mkQ("Which is BIGGER: 1/2 or 1/4 of the same pizza?", fracCircle(1,4), "1/2", ["1/4","Both are equal","Cannot say"], "fr-half","sums",
         "Cutting into FEWER parts (2) makes each part BIGGER. So 1/2 > 1/4!", "Which is bigger, half or quarter of the same pizza?"); }),
@@ -2401,7 +2414,7 @@ TOP['frac-intro'] = T("frac-intro","What is a Fraction?","🍕",[
       ["True — the bottom is what we took","True — both numbers mean the same","False — 3 is all the parts"], "fr-whole",
       "Denominator (bottom) = all equal parts. Numerator (top) = parts taken or shaded.", "True or false? In 3 by 5, the 5 tells the parts we took.", "tf"); },
   thinkOddNumeric("fr-half"),
-  function(){ var b=pick([3,4,6]);
+  function(){ var b=pick([4,6,8]);
     return mkQ("Missing Box! A cake is cut into "+b+" equal pieces. □ pieces make HALF the cake. What is □?", "", b/2, [b, b-1, 1], "fr-half","thinking",
       "Half of "+b+" pieces is "+b+" ÷ 2 = "+(b/2)+". So □ = "+(b/2)+".", "Missing box! How many pieces make half the cake?", {thinkType:"box"}); }
 ]);
@@ -2426,7 +2439,7 @@ TOP['frac-collection'] = T("frac-collection","Fraction of a Collection of Object
       return mkQ(txt, "👓", ans, [ans+2, total-ans, b], "fc-story","sums",
         "1/"+b+" of "+total+" = "+total+" ÷ "+b+" = "+ans+".", txt); })
 ],[
-  function(){ var total=pick([8,10,12]), hl=ri(2,total-2);
+  function(){ var total=pick([8,10,12]), hl=ri(2,total-2); while(hl*2===total) hl=ri(2,total-2);
     return mkQ("What If? "+hl+" of "+total+" balloons are red. What fraction is NOT red?", "", (total-hl)+"/"+total, [hl+"/"+total, total+"/"+(total-hl), hl+"/"+(total-hl)], "fc-group","thinking",
       "Not red = "+total+" − "+hl+" = "+(total-hl)+" balloons, out of "+total+": "+(total-hl)+"/"+total+".", "What fraction is not red?", {thinkType:"whatif"}); },
   thinkOddNumeric("fc-howmany"),
@@ -2443,7 +2456,8 @@ TOP['frac-numberline'] = T("frac-numberline","Fraction on the Number Line","📍
     "Marks on the line. The line from 0 to 1 is cut into equal parts.",
     function(){ return numberLineFrac(3,4)+"<div>The 📍 is at <b>3/4</b> — 3 jumps out of 4!</div>"; },
     function(){ var b=pick([2,3,4,5,6,8]), a=ri(1,b-1);
-      return mkQ("Where is the 📍 on the number line?", numberLineFrac(a,b), a+"/"+b, [(a+1)+"/"+b, a+"/"+(b+1), (b-a)+"/"+b], "fn-marks","sums",
+      var mir=(b-a)+"/"+b; if(mir===a+"/"+b || mir===(a+1)+"/"+b) mir=(b-a)+"/"+(b+2);
+      return mkQ("Where is the 📍 on the number line?", numberLineFrac(a,b), a+"/"+b, [(a+1)+"/"+b, a+"/"+(b+1), mir], "fn-marks","sums",
         "The line is cut into "+b+" parts and the pin is at part "+a+": "+a+"/"+b+".", "Where is the pin on the number line?"); }),
   S("Counting in Fractions","fn-count","Count along: 1/4, 2/4, 3/4, 1! After the last part we reach the whole 1.",
     "Counting in fractions along the line.",
@@ -2484,7 +2498,7 @@ TOP['frac-compare'] = T("frac-compare","Comparison of Fractions","⚖️",[
     "Same numerator. Smaller bottom wins, because the parts are bigger.",
     vTxt("<div style='font-size:20px;'>🍕 1/2 (2 big slices) vs 1/4 (4 small slices)</div><div>Same top (1) → smaller bottom wins: <b>1/2 is bigger</b></div>"),
     function(){ var a=pick([1,2,3]), b1=pick([3,4,5,6]), b2=b1+pick([1,3]); var big=a+"/"+b1, small=a+"/"+b2;
-      return mkQ("Which fraction is BIGGER: "+a+"/"+b1+" or "+a+"/"+b2+"?", "", big, [small, a+"/"+(b2+2), (a+1)+"/"+b2], "fcomp-num","sums",
+      return mkQ("Which fraction is BIGGER: "+a+"/"+b1+" or "+a+"/"+b2+"?", "", big, [small, a+"/"+(b2+2), a+"/"+(b2+1)], "fcomp-num","sums",
         "Same top ("+a+"): the whole cut into FEWER parts ("+b1+") gives BIGGER parts. So "+big+" wins.", "Which is bigger, "+a+" by "+b1+" or "+a+" by "+b2+"?"); }),
   S("Comparing with 1/2","fcomp-half","Is the top more than HALF the bottom? Then the fraction beats 1/2! 5/8 > 1/2 because 5 > 4.",
     "Comparing with a half. Is the top more than half the bottom?",
@@ -2500,11 +2514,15 @@ TOP['frac-compare'] = T("frac-compare","Comparison of Fractions","⚖️",[
       ["True — 8 beats 4","True — bigger bottom always wins","False — they are equal"], "fcomp-num",
       "Same top (1 part taken). Cut into 8 → tiny parts. Cut into 4 → bigger parts. So 1/4 is bigger!", "True or false? 1 by 8 is bigger than 1 by 4.", "tf"); },
   thinkOddNumeric("fcomp-den"),
-  function(){ var b=pick([5,6,8]), arr=[1,2,3].map(function(i){return ri(1,b-1);});
+  function(){ var b=pick([5,6,8]); var arr=[]; while(arr.length<3){ var v=ri(1,b-1); if(arr.indexOf(v)<0) arr.push(v); }
     var sorted=arr.slice().sort(function(x,y){return x-y;});
     var correct=sorted.map(function(x){return x+"/"+b;}).join(", ");
-    var wrong=arr.map(function(x){return x+"/"+b;}).join(", "); if(wrong===correct) wrong=sorted.slice().reverse().map(function(x){return x+"/"+b;}).join(", ");
-    return mkQ("Odd One Out — no wait, ORDER them! Put from SMALLEST to BIGGEST: "+arr.map(function(x){return x+"/"+b;}).join(", "), "", correct, [wrong, sorted.slice().reverse().map(function(x){return x+"/"+b;}).join(", ")], "fcomp-den","thinking",
+    var rev=sorted.slice().reverse().map(function(x){return x+"/"+b;}).join(", ");
+    var swapMid=[sorted[0],sorted[2],sorted[1]].map(function(x){return x+"/"+b;}).join(", ");
+    var swapFirst=[sorted[1],sorted[0],sorted[2]].map(function(x){return x+"/"+b;}).join(", ");
+    var wrong=arr.map(function(x){return x+"/"+b;}).join(", ");
+    if(wrong===correct || wrong===rev || wrong===swapMid) wrong=swapFirst;
+    return mkQ("Odd One Out — no wait, ORDER them! Put from SMALLEST to BIGGEST: "+arr.map(function(x){return x+"/"+b;}).join(", "), "", correct, [wrong, rev, swapMid], "fcomp-den","thinking",
       "Same bottom ("+b+"): order by the tops: "+correct+".", "Put the fractions from smallest to biggest.", {thinkType:"odd"}); },
   function(){ var b=pick([6,8,10]), a=b/2+1;
     return mkQ("What If? "+a+"/"+b+" is more than 1/2. What if ONE more part is shaded — the new fraction is?", "", (a+1)+"/"+b, [a+"/"+b, (a+2)+"/"+b, (a+1)+"/"+(b+1)], "fcomp-half","thinking",
@@ -2568,10 +2586,10 @@ function fracSubGen(sub, withLine){
     var b=pick([3,4,5,6,8]), a=ri(2,b-1), c=ri(1,a-1), ans=(a-c)+"/"+b;
     var vis = withLine? numberLineFrac(a,b) : fracBar(a,b);
     var mode=ri(0,1);
-    if(mode===0) return mkQ("What is "+a+"/"+b+" − "+c+"/"+b+"?", vis, ans, [a+"/"+b, (a-c)+"/"+(b-b===0?b:b), (a-c)+"/0"], sub, "sums",
+    if(mode===0) return mkQ("What is "+a+"/"+b+" − "+c+"/"+b+"?", vis, ans, [a+"/"+b, (a-c)+"/"+(b+1), (a-c)+"/0"], sub, "sums",
       "Same denominator! Subtract only the TOPS: "+a+" − "+c+" = "+(a-c)+". The bottom stays "+b+": "+ans+". Watch out — the bottom NEVER becomes 0!", "What is "+a+" by "+b+" minus "+c+" by "+b+"?");
     var txt="A water bottle was "+a+"/"+b+" full. "+pick(NAMES)+" drank "+c+"/"+b+" of it. How much water is left?";
-    return mkQ(txt, "💧 Bottle", ans, [(a-c)+"/"+(b*2), (a+1)+"/"+b, (a-c)+"/"+(b+b)], sub, "sums",
+    return mkQ(txt, "💧 Bottle", ans, [(a-c)+"/"+(b*2), (a+1)+"/"+b, (a-c)+"/"+(b+2)], sub, "sums",
       "Subtract the tops, keep the bottom: "+a+"/"+b+" − "+c+"/"+b+" = "+ans+".", txt);
   };
 }
@@ -2687,7 +2705,7 @@ TOP['money-convert-pr'] = T("money-convert-pr","Conversion of Paise to Rupees","
     vTxt("<div style='font-size:20px;'>₹6 vs 550 paise → ₹6 = 600p → <b>₹6 is more!</b></div>"),
     function(){ var r=ri(3,20); var p1=r*100, p2=p1+pick([-50,50,100,-100]); if(p2<=0) p2=p1+50;
       var more = Math.max(p1,p2);
-      return mkQ("Which is MORE money: ₹"+r+" or "+num(p2)+" paise?", "", fmtRs(more), [fmtRs(Math.min(p1,p2)), "Both are equal", fmtRs(more+100)], "mp-more","sums",
+      return mkQ("Which is MORE money: ₹"+r+" or "+num(p2)+" paise?", "", fmtRs(more), [fmtRs(Math.min(p1,p2)), "Both are equal", fmtRs(more-25)], "mp-more","sums",
         "₹"+r+" = "+num(p1)+" paise. "+num(p1)+" vs "+num(p2)+": "+fmtRs(more)+" is more.", "Which is more, "+r+" rupees or "+p2+" paise?"); }),
   S("Money Stories — Conversion","mp-story","Shopkeepers change money all day — practise like them!",
     "Money stories with conversion.",
@@ -2842,11 +2860,11 @@ function lenAddGen(sub, isSub){
   return function(){
     var a=ri(120,900), b=ri(110,800); if(isSub && b>=a) b=a-50;
     var ans=isSub? a-b : a+b; var mode=ri(0,1);
-    if(mode===0) return mkQ("What is "+fmtLen(a)+" "+(isSub?"−":"+")+" "+fmtLen(b)+"?", "📏", fmtLen(ans), [fmtLen(ans+10), fmtLen(Math.max(10,ans-10)), fmtLen(ans+100)], sub, "sums",
+    if(mode===0) return mkQ("What is "+fmtLen(a)+" "+(isSub?"−":"+")+" "+fmtLen(b)+"?", "📏", fmtLen(ans), [fmtLen(ans+10), fmtLen(ans-10>0? ans-10 : ans+200), fmtLen(ans+100)], sub, "sums",
       "Work in centimetres: "+a+" cm "+(isSub?"−":"+")+" "+b+" cm = "+num(ans)+" cm = "+fmtLen(ans)+".", "What is "+fmtLen(a)+" "+(isSub?"minus":"plus")+" "+fmtLen(b)+"?");
     var n1=pick(NAMES);
     var txt = isSub? ("A rope was "+fmtLen(a)+" long. "+n1+" cut off "+fmtLen(b)+". How much rope is left?") : (n1+" walked "+fmtLen(a)+" in the morning and "+fmtLen(b)+" in the evening. How far did "+n1+" walk in all?");
-    return mkQ(txt, "🪢", fmtLen(ans), [fmtLen(ans+50), fmtLen(Math.max(10,ans-50)), fmtLen(ans+10)], sub, "sums",
+    return mkQ(txt, "🪢", fmtLen(ans), [fmtLen(ans+50), fmtLen(ans-50>0? ans-50 : ans+200), fmtLen(ans+10)], sub, "sums",
       a+" cm "+(isSub?"−":"+")+" "+b+" cm = "+num(ans)+" cm = "+fmtLen(ans)+".", txt);
   };
 }
@@ -2887,7 +2905,7 @@ TOP['wt-convert'] = T("wt-convert","Weight — Conversion","⚖️",[
     vTxt("<div style='font-size:20px;'>🎒 3 kg vs 2,500 g → 3 kg = 3,000 g → <b>3 kg is heavier!</b></div>"),
     function(){ var k=ri(2,8); var g1=k*1000, g2=g1+pick([-500,500,1000,-1000]); if(g2<=0) g2=g1+500;
       var more=Math.max(g1,g2);
-      return mkQ("Which is HEAVIER: "+k+" kg or "+num(g2)+" g?", "", more===g1? (k+" kg") : (num(g2)+" g"), [more===g1? (num(g2)+" g") : (k+" kg"), "Both are equal", (k+2)+" kg"], "wc-compare","sums",
+      return mkQ("Which is HEAVIER: "+k+" kg or "+num(g2)+" g?", "", more===g1? (k+" kg") : (num(g2)+" g"), [more===g1? (num(g2)+" g") : (k+" kg"), "Both are equal", (k-1)+" kg"], "wc-compare","sums",
         k+" kg = "+num(g1)+" g. Compare "+num(g1)+" g and "+num(g2)+" g: the heavier is "+(more===g1? k+" kg" : num(g2)+" g")+".", "Which is heavier?"); }),
   S("Weighing Stories","wc-story","Vegetables, bags of rice, and a baby elephant's lunch! 🐘",
     "Weighing stories.",
@@ -2910,10 +2928,10 @@ function wtAddGen(sub, isSub){
     var a=ri(1200,9000), b=ri(1100,8000); if(isSub && b>=a) b=a-500;
     var ans=isSub? a-b : a+b; var mode=ri(0,1);
     function fmtW(g){ return g>=1000? (Math.floor(g/1000)+" kg"+(g%1000? " "+(g%1000)+" g":"")) : (g+" g"); }
-    if(mode===0) return mkQ("What is "+fmtW(a)+" "+(isSub?"−":"+")+" "+fmtW(b)+"?", "⚖️", fmtW(ans), [fmtW(ans+100), fmtW(Math.max(100,ans-100)), fmtW(ans+1000)], sub, "sums",
+    if(mode===0) return mkQ("What is "+fmtW(a)+" "+(isSub?"−":"+")+" "+fmtW(b)+"?", "⚖️", fmtW(ans), [fmtW(ans+100), fmtW(ans-100>0? ans-100 : ans+200), fmtW(ans+1000)], sub, "sums",
       "Work in grams: "+num(a)+" g "+(isSub?"−":"+")+" "+num(b)+" g = "+num(ans)+" g = "+fmtW(ans)+".", "What is the total weight?");
     var txt = isSub? ("A sack had "+fmtW(a)+" of rice. "+fmtW(b)+" was sold. How much rice is left?") : ("One bag weighs "+fmtW(a)+" and another weighs "+fmtW(b)+". What is their total weight?");
-    return mkQ(txt, "🎒", fmtW(ans), [fmtW(ans+500), fmtW(Math.max(100,ans-500)), fmtW(ans+100)], sub, "sums",
+    return mkQ(txt, "🎒", fmtW(ans), [fmtW(ans+500), fmtW(ans-500>0? ans-500 : ans+200), fmtW(ans+100)], sub, "sums",
       num(a)+" g "+(isSub?"−":"+")+" "+num(b)+" g = "+num(ans)+" g = "+fmtW(ans)+".", txt);
   };
 }
@@ -2975,10 +2993,10 @@ function volAddGen(sub, isSub){
     var ans=isSub? a-b : a+b;
     function fmtV(ml){ return ml>=1000? (Math.floor(ml/1000)+" L"+(ml%1000? " "+(ml%1000)+" mL":"")) : (ml+" mL"); }
     var mode=ri(0,1);
-    if(mode===0) return mkQ("What is "+fmtV(a)+" "+(isSub?"−":"+")+" "+fmtV(b)+"?", "🥤", fmtV(ans), [fmtV(ans+100), fmtV(Math.max(100,ans-100)), fmtV(ans+1000)], sub, "sums",
+    if(mode===0) return mkQ("What is "+fmtV(a)+" "+(isSub?"−":"+")+" "+fmtV(b)+"?", "🥤", fmtV(ans), [fmtV(ans+100), fmtV(ans-100>0? ans-100 : ans+200), fmtV(ans+1000)], sub, "sums",
       "Work in millilitres: "+num(a)+" mL "+(isSub?"−":"+")+" "+num(b)+" mL = "+num(ans)+" mL = "+fmtV(ans)+".", "What is the total capacity?");
     var txt = isSub? ("A jug had "+fmtV(a)+" of juice. "+fmtV(b)+" was poured out. How much juice is left?") : ("Tank A has "+fmtV(a)+" of water and Tank B has "+fmtV(b)+". How much water in all?");
-    return mkQ(txt, "🧃", fmtV(ans), [fmtV(ans+500), fmtV(Math.max(100,ans-500)), fmtV(ans+100)], sub, "sums",
+    return mkQ(txt, "🧃", fmtV(ans), [fmtV(ans+500), fmtV(ans-500>0? ans-500 : ans+200), fmtV(ans+100)], sub, "sums",
       num(a)+" mL "+(isSub?"−":"+")+" "+num(b)+" mL = "+num(ans)+" mL = "+fmtV(ans)+".", txt);
   };
 }
@@ -3009,7 +3027,9 @@ TOP['time-clock'] = T("time-clock","The Clock — Reading Time","🕐",[
     "O clock and half past. Long hand on 12 is o clock. On 6 is half past.",
     function(){ return "<div class='center'>"+clockSVG(4,30)+"</div><div class='center'>This clock shows <b>4:30</b> — half past 4!</div>"; },
     function(){ var h=ri(1,12), m=pick([0,30]);
-      return mkQ("What time does the clock show?", clockSVG(h,m), fmtTime(h,m), [fmtTime(h===12?1:h+1, m), fmtTime(h, m===0?30:0), fmtTime(m===30?6:12, 0)==fmtTime(h,m)? fmtTime(h,15) : fmtTime(m===30?6:12,0)], "tc-oclock","sums",
+      var ansT=fmtTime(h,m), d1T=fmtTime(h===12?1:h+1, m), d2T=fmtTime(h, m===0?30:0), d3T=fmtTime(m===30?6:12, 0);
+      if(d3T===ansT || d3T===d1T || d3T===d2T) d3T=fmtTime(h,15);
+      return mkQ("What time does the clock show?", clockSVG(h,m), ansT, [d1T, d2T, d3T], "tc-oclock","sums",
         "The short hand is near "+h+" and the long hand is on "+(m===0? "12 → "+fmtTime(h,m) : "6 → half past, "+fmtTime(h,m))+".", "What time does the clock show?"); }),
   S("Quarter Past and Quarter To","tc-quarter","Long hand on 3 = quarter past (15 min). On 9 = quarter to (45 min)!",
     "Quarter past and quarter to. On 3 is quarter past. On 9 is quarter to.",
@@ -3198,7 +3218,7 @@ TOP['geo-measure'] = T("geo-measure","Measuring and Drawing Line Segments","📏
   S("Longer and Shorter","gm-compare","Compare lengths in the SAME unit — centimetres with centimetres!",
     "Longer and shorter. Compare in the same unit.",
     vTxt("<div style='font-size:20px;'>✏️ 14 cm vs 🖍️ 11 cm → the pencil is LONGER by 14 − 11 = <b>3 cm</b></div>"),
-    function(){ var a=ri(8,20), b=ri(5,a-2); var mode=ri(0,1);
+    function(){ var a=ri(13,20), b=ri(5,a-8); var mode=ri(0,1);
       if(mode===0) return mkQ("A ribbon is "+a+" cm long. A string is "+b+" cm long. How much LONGER is the ribbon?", "", (a-b)+" cm", [(a-b+1)+" cm", a+" cm", (a+b)+" cm"], "gm-compare","sums",
         a+" − "+b+" = "+(a-b)+" cm longer.", "How much longer is the ribbon?");
       return mkQ("Which is LONGER: a segment of "+a+" cm or a segment of "+(b+5)+" cm?", "", a+" cm", [(b+5)+" cm", "Both are equal", "Cannot compare"], "gm-compare","sums",
@@ -3263,11 +3283,12 @@ TOP['geo-plane'] = T("geo-plane","Plane Figures","🔷",[
 /* fix the gpl-name generator: build proper 4-option questions */
 TOP['geo-plane'].steps[0].gen = function(){
   var sh=pick(PLANE_SHAPES);
-  var others=PLANE_SHAPES.filter(function(x){return x[0]!==sh[0];});
   var mode=ri(0,1);
-  if(mode===0) return mkQ("Which shape has "+(sh[1]===0? "NO straight sides and NO corners" : "exactly "+sh[1]+" sides")+"?", "", sh[0], [others[0][0], others[1][0], others[2][0]], "gpl-name","sums",
-    "A "+sh[0].toLowerCase()+" has "+sh[1]+" sides.", "Which shape has "+(sh[1]===0? "no straight sides" : sh[1]+" sides")+"?");
-  return mkQ("What is this shape called? "+sh[3], "", sh[0], [others[0][0], others[1][0], others[3][0]], "gpl-name","sums",
+  if(mode===0){ var diffSides=PLANE_SHAPES.filter(function(x){return x[0]!==sh[0] && x[1]!==sh[1];});
+    return mkQ("Which shape has "+(sh[1]===0? "NO straight sides and NO corners" : "exactly "+sh[1]+" sides")+"?", "", sh[0], [diffSides[0][0], diffSides[1][0], diffSides[2][0]], "gpl-name","sums",
+      "A "+sh[0].toLowerCase()+" has "+sh[1]+" sides.", "Which shape has "+(sh[1]===0? "no straight sides" : sh[1]+" sides")+"?"); }
+  var diffIcon=PLANE_SHAPES.filter(function(x){return x[0]!==sh[0] && x[3]!==sh[3];});
+  return mkQ("What is this shape called? "+sh[3], "", sh[0], [diffIcon[0][0], diffIcon[1][0], diffIcon[3][0]], "gpl-name","sums",
     "That is a "+sh[0].toLowerCase()+".", "What is this shape called?");
 };
 var SOLID_SHAPES=[["Cube",6,12,8,"🧊"],["Cuboid",6,12,8,"🧱"],["Sphere",0,0,0,"⚽"],["Cone",1,0,1,"🍦"]];
@@ -3341,8 +3362,8 @@ TOP['geo-faces'] = T("geo-faces","Faces, Edges and Corners","🧊",[
 /* ============ CH 12 · PICTOGRAPHS ============ */
 function pictoData(scale, cats){
   var names=cats||["🍎 Apples","🍌 Bananas","🍊 Oranges","🍇 Grapes"];
-  var rows=[];
-  for(var i=0;i<names.length;i++) rows.push([names[i], ri(1,6)*scale]);
+  var rows=[]; var usedK={};
+  for(var i=0;i<names.length;i++){ var k=ri(1,8); while(usedK[k]) k=ri(1,8); usedK[k]=1; rows.push([names[i], k*scale]); } /* distinct rows: MOST/FEWEST/MORE questions always have exactly one right answer */
   return rows;
 }
 TOP['picto-read'] = T("picto-read","Reading Pictographs","📊",[
@@ -3355,7 +3376,10 @@ TOP['picto-read'] = T("picto-read","Reading Pictographs","📊",[
   S("Comparing Rows","pr-compare","Compare rows: MORE pictures = more things! Find the biggest and smallest rows.",
     "Comparing rows in a pictograph.",
     function(){ var rows=pictoData(1); return pictoVisual(rows, "🌟", 1)+"<div>The LONGEST row has the most!</div>"; },
-    function(){ var rows=pictoData(1); var sorted=rows.slice().sort(function(x,y){return y[1]-x[1];});
+    function(){ var rows=pictoData(1); var okCt=false;
+      while(!okCt){ var seenCt={}; okCt=true;
+        for(var ci=0; ci<rows.length; ci++){ if(seenCt[rows[ci][1]]){ okCt=false; rows=pictoData(1); break; } seenCt[rows[ci][1]]=1; } }
+      var sorted=rows.slice().sort(function(x,y){return y[1]-x[1];});
       var mode=ri(0,1);
       if(mode===0) return mkQ("Which item has the MOST in the pictograph?", pictoVisual(rows, "🌟", 1), sorted[0][0], [sorted[1][0], sorted[2][0], sorted[3][0]], "pr-compare","sums",
         sorted[0][0]+" has "+sorted[0][1]+" pictures — the longest row!", "Which item has the most?");
@@ -3952,7 +3976,7 @@ function epOpenPaper(examId){
   var last = epLastPaperAttempt(examId);
   el("epStartBody").innerHTML =
     '<h2 style="margin:6px 0;">📝 ' + esc(ex.name) + '</h2>'
-    + '<div class="mascot-row"><div class="cast big" data-cast="mimi"></div><div class="bubble">Exam time! Read each question slowly and try your best. I believe in you! 🐰💪</div></div>'
+    + '<div class="mascot-row"><div class="cast big" data-cast="mimi"></div><div class="bubble">Exam time! Read each question slowly and try your best. I believe in you! 🐰💪 This paper does not show right or wrong — just do your best! You will see everything at the end 🌟</div></div>'
     + '<div class="card"><p style="margin:4px 0;"><b>' + ex.size + ' questions</b> · 1 mark each · paper of <b>' + ex.size + ' marks</b></p>'
     + '<p style="margin:4px 0;">Chapters: ' + ex.chapterIds.map(function(cid){ return '<span class="ep-chip">' + esc(epChapterName(cid)) + '</span>'; }).join("") + '</p>'
     + (ex.timerOn? '<p style="margin:4px 0;">⏱ Gentle timer: <b>' + ex.timerMins + ' minutes</b>. When time finishes, we check the paper together.</p>' : '<p style="margin:4px 0;">Take your time — there is no timer on this paper. 🌈</p>')
@@ -3999,9 +4023,10 @@ function epRenderQ(){
   var h = '<div class="ep-qhead"><span class="mut">' + esc(s.examName) + '</span>'
     + (s.timerOn? '<span class="timerpill" id="epTimer">⏱ --:--</span>' : '<span class="ep-chip">⏱ ' + epFmtSecs((Date.now() - s.startedAt) / 1000) + ' so far</span>')
     + '</div>'
+    + '<div class="ep-norightwrong">This paper does not show right or wrong — just do your best! You will see everything at the end 🌟</div>'
     + '<h3 style="margin:8px 0 2px;">Question ' + (s.ix + 1) + ' of ' + n + '</h3>'
     + '<div class="epbar"><i style="width:' + Math.round(((s.ix) / n) * 100) + '%"></i></div>'
-    + '<div><span class="ep-chip">' + esc(epChapterName(q.chapter)) + '</span>' + (q.kind === "thinking"? '<span class="ep-chip warn">🧠 Thinking question</span>' : '') + '<span class="ep-chip good">1 mark</span></div>'
+    + '<div><span class="ep-chip">' + esc(epChapterName(q.chapter)) + '</span>' + (q.kind === "thinking"? '<span class="ep-chip warn">🧠 Thinking question</span>' : '') + '<span class="ep-chip">1 mark</span></div>'
     + '<div class="qcard"><div class="qtext">' + q.q + '</div>' + (q.visual? '<div class="qvisual">' + q.visual + '</div>' : '')
     + '<div class="opts">' + q.options.map(function(o, i){ return '<button class="opt' + (s.picked[s.ix] === i? ' sel' : '') + '" data-act="q-opt" data-i="' + i + '"><span class="olet">' + "ABCD"[i] + '</span> ' + esc(String(o)) + '</button>'; }).join("") + '</div></div>'
     + '<div class="btnrow">'
