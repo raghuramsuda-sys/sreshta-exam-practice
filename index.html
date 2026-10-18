@@ -3568,7 +3568,7 @@ function mimiPlayClip(clipId, opts){
    generator bank above (validated Grade 3 ICSE generators).
    ===================================================================== */
 var EP_KEY = "sep_state_v1";
-var EP = { who:null, pinTarget:null, pinBuf:"", state:null, setup:null, session:null, dashExamId:null, resultReturn:"home", trackerFilter:"all" };
+var EP = { who:null, pinTarget:null, pinBuf:"", state:null, setup:null, session:null, dashExamId:null, resultReturn:"home", trackerFilter:"all", trkDate:null, trkSubject:null, reviewMode:"all", reviewId:null };
 
 function el(id){ return document.getElementById(id); }
 function epSave(){ try{ localStorage.setItem(EP_KEY, JSON.stringify(EP.state)); }catch(e){} }
@@ -3632,6 +3632,37 @@ function epTrackerData(){
   EP.state.attempts.forEach(function(a){ if(a.date >= wk && a.date <= today) week++; });
   return { groups: groups, total: EP.state.attempts.length, week: week };
 }
+/* =====================================================================
+   TRACKER DRILL-DOWN — Ram's path: tap a date → subjects that day →
+   sessions (papers & drills) → the attempt's full review, mistakes
+   first. The All / Papers / Drills filter and the total / this-week
+   summary stay at the top of the section and apply at every level.
+   ===================================================================== */
+function epTrkFiltered(){
+  var f = EP.trackerFilter || "all";
+  return EP.state.attempts.filter(function(a){ return f === "all" || epAttemptKind(a) === f; })
+    .sort(function(a, b){
+      if(a.date !== b.date) return a.date < b.date? 1 : -1;
+      var x = String(a.at || ""), y = String(b.at || "");
+      return x === y? 0 : (x < y? 1 : -1);
+    });
+}
+function epTrkSplitText(rows){
+  var p = 0, d = 0;
+  rows.forEach(function(a){ if(epAttemptKind(a) === "drill") d++; else p++; });
+  return rows.length + (rows.length === 1? " session" : " sessions")
+    + " · 📝 " + p + (p === 1? " paper" : " papers")
+    + " · 🎯 " + d + (d === 1? " drill" : " drills");
+}
+function epTrkRow(a){
+  var kind = epAttemptKind(a), subj = epSubject(epAttemptSubject(a));
+  var pct = a.total? Math.round(a.score / a.total * 100) : 0;
+  return '<button class="trk-row" data-act="trk-review" data-id="' + a.id + '">'
+    + '<span class="trk-main"><span class="trk-t">' + subj.icon + ' ' + esc(subj.name) + ' • ' + esc(a.examName || "Practice")
+    + '<span class="trk-badge ' + kind + '">' + (kind === "drill"? "🎯 Drill" : "📝 Paper") + '</span></span>'
+    + '<span class="trk-s">' + a.score + '/' + a.total + ' marks · ' + pct + '% · ⏱ ' + epFmtSecs(a.secs) + '</span></span>'
+    + '<span class="trk-go">➜</span></button>';
+}
 function epRenderTracker(){
   var d = epTrackerData();
   var h = '<h3 class="sec">🗓️ Practice Tracker — day by day</h3>';
@@ -3644,22 +3675,57 @@ function epRenderTracker(){
         return '<button class="chip sm' + (f === o[0]? " on" : "") + '" data-act="trk-filter" data-f="' + o[0] + '">' + o[1] + '</button>';
       }).join("") + '</div>';
   h += '<p class="mut" style="margin:4px 0 2px;">' + d.total + (d.total === 1? ' practice session' : ' practice sessions') + ' in all · ' + d.week + ' this week</p>';
-  var shown = 0;
-  d.groups.forEach(function(g){
-    var rows = g.rows.filter(function(a){ return f === "all" || epAttemptKind(a) === f; });
-    if(!rows.length) return;
-    h += '<div class="trk-group"><h4 class="trk-date">' + esc(epDateHeader(g.date)) + '</h4>' + rows.map(function(a){
-      var kind = epAttemptKind(a), subj = epSubject(epAttemptSubject(a));
-      var pct = a.total? Math.round(a.score / a.total * 100) : 0;
-      return '<button class="trk-row" data-act="trk-open" data-id="' + (a.examId || "") + '">'
-        + '<span class="trk-main"><span class="trk-t">' + subj.icon + ' ' + esc(subj.name) + ' • ' + esc(a.examName || "Practice")
-        + '<span class="trk-badge ' + kind + '">' + (kind === "drill"? "🎯 Drill" : "📝 Paper") + '</span></span>'
-        + '<span class="trk-s">' + a.score + '/' + a.total + ' marks · ' + pct + '% · ⏱ ' + epFmtSecs(a.secs) + '</span></span>'
-        + '<span class="trk-go">➜</span></button>';
-    }).join("") + '</div>';
-    shown += rows.length;
+  var list = epTrkFiltered();
+  /* ---- L3: sessions for one date + subject ---- */
+  if(EP.trkDate && EP.trkSubject){
+    var rows3 = list.filter(function(a){ return a.date === EP.trkDate && epAttemptSubject(a) === EP.trkSubject; });
+    var sj = epSubject(EP.trkSubject);
+    h += '<div style="margin:10px 0 2px;"><button class="btn ghost small" data-act="trk-back" data-to="subjects">⬅ Subjects</button></div>'
+      + '<h4 class="trk-date">' + esc(epDateHeader(EP.trkDate)) + ' · ' + sj.icon + ' ' + esc(sj.name) + '</h4>';
+    if(!rows3.length) h += '<div class="card"><p style="margin:4px 0;">Nothing here under this filter — try “All” above. 🌈</p></div>';
+    else h += rows3.map(epTrkRow).join("");
+    return h;
+  }
+  /* ---- L2: subjects for one date ---- */
+  if(EP.trkDate){
+    var rows2 = list.filter(function(a){ return a.date === EP.trkDate; });
+    h += '<div style="margin:10px 0 2px;"><button class="btn ghost small" data-act="trk-back" data-to="dates">⬅ All dates</button></div>'
+      + '<h4 class="trk-date">' + esc(epDateHeader(EP.trkDate)) + '</h4>';
+    if(!rows2.length) h += '<div class="card"><p style="margin:4px 0;">Nothing on this date under this filter — try “All” above. 🌈</p></div>';
+    else {
+      var seenS = {}, order = [];
+      SUBJECTS.forEach(function(s){ if(rows2.some(function(a){ return epAttemptSubject(a) === s.id; })){ seenS[s.id] = 1; order.push(s.id); } });
+      rows2.forEach(function(a){ var sid = epAttemptSubject(a); if(!seenS[sid]){ seenS[sid] = 1; order.push(sid); } });
+      h += order.map(function(sid){
+        var srows = rows2.filter(function(a){ return epAttemptSubject(a) === sid; });
+        var s2 = epSubject(sid);
+        return '<button class="trk-row trk-subjcard" data-act="trk-subj" data-id="' + sid + '">'
+          + '<span class="trk-main"><span class="trk-t">' + s2.icon + ' ' + esc(s2.name) + '</span>'
+          + '<span class="trk-s">' + epTrkSplitText(srows) + '</span></span>'
+          + '<span class="trk-go">➜</span></button>';
+      }).join("");
+    }
+    return h;
+  }
+  /* ---- L1: dates ---- */
+  if(!list.length){
+    return h + '<div class="card"><p style="margin:4px 0;">' + (f === "drill"? 'No drills yet — a drill starts from a finished paper, with “Practise my weak chapters”. 🎯' : 'Nothing under this filter yet. 🌈') + '</p></div>';
+  }
+  var groups = [], byDate = {};
+  list.forEach(function(a){
+    var g = byDate[a.date];
+    if(!g){ g = { date: a.date, rows: [] }; byDate[a.date] = g; groups.push(g); }
+    g.rows.push(a);
   });
-  if(!shown) h += '<div class="card"><p style="margin:4px 0;">' + (f === "drill"? 'No drills yet — a drill starts from a finished paper, with "Practise my weak chapters". 🎯' : 'Nothing under this filter yet. 🌈') + '</p></div>';
+  h += groups.map(function(g){
+    var seenSub = {}, subs = [];
+    g.rows.forEach(function(a){ var sid = epAttemptSubject(a); if(!seenSub[sid]){ seenSub[sid] = 1; var s3 = epSubject(sid); subs.push(s3.icon + ' ' + s3.name); } });
+    return '<button class="trk-row trk-datecard" data-act="trk-date" data-id="' + g.date + '" data-count="' + g.rows.length + '">'
+      + '<span class="trk-main"><span class="trk-t">' + esc(epDateHeader(g.date)) + '</span>'
+      + '<span class="trk-s">' + epTrkSplitText(g.rows) + '</span>'
+      + '<span class="trk-s">' + esc(subs.join(" · ")) + '</span></span>'
+      + '<span class="trk-go">➜</span></button>';
+  }).join("");
   return h;
 }
 
@@ -3992,14 +4058,52 @@ function epFinish(auto){
    RESULT + REVIEW — marks, %, time, per-question review, weak chapters.
    ===================================================================== */
 function epResultBand(pct){ if(pct >= 90) return ["🌟", "Exam Star!"]; if(pct >= 70) return ["🎉", "Super Work!"]; return ["💪", "Good Trying!"]; }
+/* =====================================================================
+   ATTEMPT REVIEW — one shared screen for the live finish, the child
+   home Review buttons, the exam detail Review buttons and the tracker
+   drill-down (L4). Mistakes first: a "Questions to learn again" block
+   (wrong + skipped, with your answer, the correct answer and the
+   explanation), then the whole paper behind an All / Mistakes toggle.
+   ===================================================================== */
+function epItemOk(it){ var p = it.picked; return p != null && p >= 0 && it.options && it.options[p] != null && String(it.options[p]) === String(it.answer); }
+function epItemSkipped(it){ return it.picked == null || it.picked < 0; }
+function epMistakes(a){
+  var out = [];
+  ((a && a.items) || []).forEach(function(it, i){ if(!epItemOk(it)) out.push({ it: it, ix: i }); });
+  return out;
+}
+function epReviewCard(it, i){
+  var p = it.picked, ok = epItemOk(it), skipped = epItemSkipped(it);
+  return '<div class="rev-card ' + (ok? "rev-ok" : "rev-no") + '"><div class="rev-q">Q' + (i + 1) + '. ' + it.q + '</div>'
+    + (it.visual? '<div class="qvisual">' + it.visual + '</div>' : '')
+    + '<div class="rev-a">' + (skipped? '⏭ You skipped this one' : (ok? '✅ Your answer: ' : '✏️ Your answer: ') + '<b>' + esc(String(it.options[p])) + '</b>') + '</div>'
+    + (ok? '' : '<div class="rev-a">✔ Right answer: <b>' + esc(String(it.answer)) + '</b></div>')
+    + (it.explain? '<div class="rev-e">💡 ' + it.explain + '</div>' : '')
+    + '<div class="mut">' + esc(epChapterName(it.chapter)) + (it.kind === "thinking"? ' · 🧠 Thinking' : '') + '</div></div>';
+}
+function epMistakeCard(it, i){
+  var p = it.picked, skipped = epItemSkipped(it);
+  return '<div class="review-item"><div class="rq">Q' + (i + 1) + '. ' + it.q + '</div>'
+    + (it.visual? '<div class="qvisual">' + it.visual + '</div>' : '')
+    + '<div class="rev-a">' + (skipped? '⏭ <span class="rno">Skipped — no answer picked</span>' : '✏️ Your answer: <span class="rno">' + esc(String(it.options[p])) + '</span>') + '</div>'
+    + '<div class="rev-a">✔ Correct answer: <span class="rok">' + esc(String(it.answer)) + '</span></div>'
+    + (it.explain? '<div class="rex">💡 ' + it.explain + '</div>' : '')
+    + '<div class="mut">📚 ' + esc(epChapterName(it.chapter)) + (it.kind === "thinking"? ' · 🧠 Thinking' : '') + '</div></div>';
+}
 function epRenderResult(a, fresh){
+  EP.reviewId = a.id;
   var pct = a.total? Math.round(a.score / a.total * 100) : 0;
   var band = epResultBand(pct);
   var weak = epWeakFromLoss(a.loss);
-  var h = '<div style="text-align:center;"><div style="font-size:52px;">' + band[0] + '</div>'
+  var subj = epSubject(epAttemptSubject(a));
+  var items = a.items || [];
+  var mistakes = epMistakes(a);
+  var h = '';
+  if(EP.resultReturn === "tracker") h += '<div style="margin-bottom:8px;"><button class="btn ghost small" data-act="res-done">⬅ Back to Practice Tracker</button></div>';
+  h += '<div style="text-align:center;"><div style="font-size:52px;">' + band[0] + '</div>'
     + '<h2 style="margin:4px 0;">' + band[1] + '</h2>'
     + '<p style="font-size:19px;margin:4px 0;">You scored <b>' + a.score + ' out of ' + a.total + '</b> marks · <b>' + pct + '%</b></p>'
-    + '<p class="mut" style="margin:2px 0;">📝 ' + esc(a.examName) + ' · ' + epFmtDate(a.date) + ' · ⏱ Time taken: ' + epFmtSecs(a.secs) + '</p></div>'
+    + '<p class="mut" style="margin:2px 0;">📝 ' + esc(a.examName) + ' · ' + subj.icon + ' ' + esc(subj.name) + ' · ' + epFmtDate(a.date) + ' · ⏱ Time taken: ' + epFmtSecs(a.secs) + '</p></div>'
     + '<div class="mascot-row"><div class="cast med" data-cast="mimi"></div><div class="bubble">' + (pct >= 70? "Hooray! You did it! Let's look at your paper together! 🎉" : "You tried your best — that is what stars do! Let's look together and practise the tricky bits!") + '</div></div>';
   if(weak.length){
     h += '<h3 class="sec">📚 Chapters to look at again</h3>'
@@ -4007,18 +4111,32 @@ function epRenderResult(a, fresh){
   } else {
     h += '<div class="card"><p style="margin:4px 0;">🏆 Every chapter is shining — no marks lost anywhere!</p></div>';
   }
-  h += '<h3 class="sec">🔍 Look at your paper</h3><div>';
-  a.items.forEach(function(it, i){
-    var p = it.picked, ok = p != null && p >= 0 && it.options[p] != null && String(it.options[p]) === String(it.answer);
-    var skipped = p == null || p < 0;
-    h += '<div class="rev-card ' + (ok? "rev-ok" : "rev-no") + '"><div class="rev-q">Q' + (i + 1) + '. ' + it.q + '</div>'
-      + (it.visual? '<div class="qvisual">' + it.visual + '</div>' : '')
-      + '<div class="rev-a">' + (skipped? '⏭ You skipped this one' : (ok? '✅ Your answer: ' : '✏️ Your answer: ') + '<b>' + esc(String(it.options[p])) + '</b>') + '</div>'
-      + (ok? '' : '<div class="rev-a">✔ Right answer: <b>' + esc(String(it.answer)) + '</b></div>')
-      + (it.explain? '<div class="rev-e">💡 ' + it.explain + '</div>' : '')
-      + '<div class="mut">' + esc(epChapterName(it.chapter)) + (it.kind === "thinking"? ' · 🧠 Thinking' : '') + '</div></div>';
-  });
-  h += '</div><div class="btnrow">';
+  if(!items.length){
+    h += '<h3 class="sec">🧩 Questions to learn again</h3>'
+      + '<div class="card"><p style="margin:4px 0;">Question details were not saved for this try — only the score was kept. From the next paper, every question is saved, so the tricky ones can be learned again right here. 🌈</p></div>';
+  } else {
+    if(!mistakes.length){
+      h += '<div class="card"><p style="margin:4px 0;">🌟 Every question correct — nothing to learn again here!</p></div>';
+    } else {
+      h += '<h3 class="sec">🧩 Questions to learn again</h3>'
+        + '<p class="mut" style="margin:2px 0 4px;">' + mistakes.length + (mistakes.length === 1? ' question' : ' questions') + ' to look at once more — these are the ones that grow the brain! 💪</p>'
+        + mistakes.map(function(m){ return epMistakeCard(m.it, m.ix); }).join("");
+    }
+    var mode = EP.reviewMode || "all";
+    h += '<h3 class="sec">🔍 Look at your paper</h3>'
+      + '<div class="trk-filter">'
+      + '<button class="chip sm' + (mode === "all"? " on" : "") + '" data-act="rev-mode" data-v="all">All questions</button>'
+      + '<button class="chip sm' + (mode === "mistakes"? " on" : "") + '" data-act="rev-mode" data-v="mistakes">Mistakes only</button>'
+      + '</div><div>';
+    if(mode === "mistakes"){
+      if(!mistakes.length) h += '<div class="card"><p style="margin:4px 0;">🌟 No mistakes — every question correct!</p></div>';
+      else h += mistakes.map(function(m){ return epReviewCard(m.it, m.ix); }).join("");
+    } else {
+      h += items.map(function(it, i){ return epReviewCard(it, i); }).join("");
+    }
+    h += '</div>';
+  }
+  h += '<div class="btnrow">';
   if(a.kind === "paper"){
     if(weak.length) h += '<button class="btn primary" data-act="res-drill" data-id="' + a.id + '">🎯 Practise my weak chapters</button>';
     var ex = epExam(a.examId);
@@ -4239,12 +4357,13 @@ function epAct(act, id, node){
   switch(act){
     case "open-paper": epOpenPaper(id); break;
     case "start-paper": epStartPaper(id); break;
-    case "fin-review": { var a = epAttempt(id); if(a){ EP.resultReturn = "home"; epRenderResult(a, false); show("scr-epresult"); } break; }
+    case "fin-review": { var a = epAttempt(id); if(a){ EP.resultReturn = "home"; EP.reviewMode = "all"; epRenderResult(a, false); show("scr-epresult"); } break; }
     case "fin-retry": epOpenPaper(id); break;
     case "res-drill": epStartDrill(id); break;
     case "res-retry": epOpenPaper(id); break;
     case "res-done":
-      if(EP.resultReturn === "detail" && EP.dashExamId){ epRenderDetail(EP.dashExamId); show("scr-epdetail"); }
+      if(EP.resultReturn === "tracker"){ epRenderDash(); show("scr-dash"); }
+      else if(EP.resultReturn === "detail" && EP.dashExamId){ epRenderDetail(EP.dashExamId); show("scr-epdetail"); }
       else if(EP.who === "parent"){ epRenderDash(); show("scr-dash"); }
       else { epRenderHome(); show("scr-home"); }
       break;
@@ -4259,8 +4378,12 @@ function epAct(act, id, node){
     case "dash-new": epSetupStart(null); break;
     case "dash-view": EP.armArchive = null; epRenderDetail(id); show("scr-epdetail"); break;
     case "trk-filter": EP.trackerFilter = node.getAttribute("data-f") || "all"; epRenderDash(); break;
-    case "trk-open": if(id && epExam(id)){ EP.armArchive = null; epRenderDetail(id); show("scr-epdetail"); } break;
-    case "det-review": { var a2 = epAttempt(id); if(a2){ EP.resultReturn = "detail"; epRenderResult(a2, false); show("scr-epresult"); } break; }
+    case "trk-date": EP.trkDate = id; EP.trkSubject = null; epRenderDash(); break;
+    case "trk-subj": EP.trkSubject = id; epRenderDash(); break;
+    case "trk-back": if(node.getAttribute("data-to") === "dates"){ EP.trkDate = null; EP.trkSubject = null; } else { EP.trkSubject = null; } epRenderDash(); break;
+    case "trk-review": { var a3 = epAttempt(id); if(a3){ EP.resultReturn = "tracker"; EP.reviewMode = "all"; epRenderResult(a3, false); show("scr-epresult"); } break; }
+    case "rev-mode": EP.reviewMode = node.getAttribute("data-v") || "all"; { var ra = epAttempt(EP.reviewId); if(ra) epRenderResult(ra, false); } break;
+    case "det-review": { var a2 = epAttempt(id); if(a2){ EP.resultReturn = "detail"; EP.reviewMode = "all"; epRenderResult(a2, false); show("scr-epresult"); } break; }
     case "det-edit": epSetupStart(id); break;
     case "det-archive":
       if(EP.armArchive === id){ var ex = epExam(id); if(ex){ ex.status = "done"; epSave(); } EP.armArchive = null; epRenderDetail(id); }
@@ -4319,7 +4442,7 @@ function epInit(){
   show("scr-access");
 }
 /* test hooks (used by the jsdom suite; harmless in the app) */
-window.EPApp = { EP: EP, epLoad: epLoad, epSave: epSave, epBuildPaper: epBuildPaper, epBuildDrill: epBuildDrill, epMark: epMark, epWeakFromLoss: epWeakFromLoss, epChapterName: epChapterName, epSetupStart: epSetupStart, epRenderDash: epRenderDash, epRenderHome: epRenderHome, epRenderDetail: epRenderDetail, epSig: epSig, epAttemptKind: epAttemptKind, epAttemptSubject: epAttemptSubject, epTrackerData: epTrackerData, epRenderTracker: epRenderTracker, epDateHeader: epDateHeader };
+window.EPApp = { EP: EP, epLoad: epLoad, epSave: epSave, epBuildPaper: epBuildPaper, epBuildDrill: epBuildDrill, epMark: epMark, epWeakFromLoss: epWeakFromLoss, epChapterName: epChapterName, epSetupStart: epSetupStart, epRenderDash: epRenderDash, epRenderHome: epRenderHome, epRenderDetail: epRenderDetail, epSig: epSig, epAttemptKind: epAttemptKind, epAttemptSubject: epAttemptSubject, epTrackerData: epTrackerData, epRenderTracker: epRenderTracker, epDateHeader: epDateHeader, epMistakes: epMistakes, epRenderResult: epRenderResult, epTrkFiltered: epTrkFiltered };
 if(document.getElementById("app")) epInit();
 
 </script>
