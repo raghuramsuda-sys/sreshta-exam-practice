@@ -641,6 +641,18 @@ h3.sec{ font-size:17px; font-weight:800; color:#22315e; margin:18px 0 8px; }
 button.dcard{ font:inherit; text-align:left; width:100%; }
 /* dashboard + ready cards stack vertically (grade3 .dcard is a flex row) */
 #epDashBody .dcard, #readyList .dcard{ display:block; }
+/* ---- date-wise practice tracker (Parents Dashboard home) ---- */
+.trk-filter{ display:flex; flex-wrap:wrap; gap:8px; margin:8px 0 4px; }
+.chip.sm{ padding:6px 14px; font-size:13.5px; }
+.trk-date{ font-size:15px; font-weight:800; color:#22315e; margin:14px 0 4px; }
+.trk-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; background:#fff; border:1.5px solid #eadff7; border-radius:14px; padding:10px 12px; margin:6px 0; cursor:pointer; text-align:left; width:100%; font:inherit; color:#3b1163; }
+.trk-main{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.trk-t{ font-weight:700; font-size:15px; color:#22315e; }
+.trk-s{ font-size:12.5px; font-weight:600; color:#5a68a0; }
+.trk-badge{ display:inline-block; font-size:11px; font-weight:800; border-radius:99px; padding:2px 8px; vertical-align:2px; margin-left:4px; white-space:nowrap; }
+.trk-badge.paper{ background:#e3f2fd; color:#1565c0; }
+.trk-badge.drill{ background:#fff3e0; color:#e65100; }
+.trk-go{ flex:0 0 auto; color:#8a7ba8; font-weight:800; }
 
 </style>
 </head>
@@ -3556,7 +3568,7 @@ function mimiPlayClip(clipId, opts){
    generator bank above (validated Grade 3 ICSE generators).
    ===================================================================== */
 var EP_KEY = "sep_state_v1";
-var EP = { who:null, pinTarget:null, pinBuf:"", state:null, setup:null, session:null, dashExamId:null, resultReturn:"home" };
+var EP = { who:null, pinTarget:null, pinBuf:"", state:null, setup:null, session:null, dashExamId:null, resultReturn:"home", trackerFilter:"all" };
 
 function el(id){ return document.getElementById(id); }
 function epSave(){ try{ localStorage.setItem(EP_KEY, JSON.stringify(EP.state)); }catch(e){} }
@@ -3584,6 +3596,72 @@ function epPaperAttempts(examId){ return EP.state.attempts.filter(function(a){ r
 function epLastPaperAttempt(examId){ var l = epPaperAttempts(examId); return l.length? l[l.length-1] : null; }
 function epUpcoming(){ return EP.state.exams.filter(function(e){ return e.status!=="done"; }).sort(function(a,b){ if(a.date && b.date) return a.date<b.date? -1 : 1; if(a.date) return -1; if(b.date) return 1; return a.createdAt - b.createdAt; }); }
 function epWeakFromLoss(loss){ return Object.keys(loss||{}).filter(function(cid){ return loss[cid]>0; }).map(function(cid){ return { cid:cid, lost:loss[cid] }; }).sort(function(a,b){ return b.lost-a.lost; }).slice(0,3); }
+
+/* =====================================================================
+   DATE-WISE PRACTICE TRACKER (Parents Dashboard home) — one unified,
+   chronological log of every finished paper AND drill across all exams
+   in this app, grouped by calendar day, newest day first.
+   ===================================================================== */
+var EP_WEEKDAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+function epAttemptKind(a){ return (a && (a.kind || a.type)) || "paper"; } /* records saved before kinds existed count as papers */
+function epAttemptSubject(a){ if(a && a.subject) return a.subject; var ex = a? epExam(a.examId) : null; return ex? ex.subject : "maths"; }
+function epDateHeader(ds){ /* "Sat, 18 Oct 2026" */
+  var p = String(ds || "").split("-"); if(p.length !== 3) return String(ds || "");
+  var wd = EP_WEEKDAYS[new Date(Date.UTC(+p[0], (+p[1]) - 1, +p[2])).getUTCDay()];
+  return wd + ", " + (+p[2]) + " " + EP_MONTHS[(+p[1]) - 1] + " " + p[0];
+}
+function epWeekStart(ds){ /* Monday (YYYY-MM-DD) of the week holding ds */
+  var p = String(ds).split("-");
+  var d = new Date(+p[0], (+p[1]) - 1, +p[2]);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return todayStr(d.getTime());
+}
+function epTrackerData(){
+  var list = EP.state.attempts.slice().sort(function(a, b){
+    if(a.date !== b.date) return a.date < b.date? 1 : -1;
+    var x = String(a.at || ""), y = String(b.at || "");
+    return x === y? 0 : (x < y? 1 : -1);
+  });
+  var groups = [], byDate = {};
+  list.forEach(function(a){
+    var g = byDate[a.date];
+    if(!g){ g = { date: a.date, rows: [] }; byDate[a.date] = g; groups.push(g); }
+    g.rows.push(a);
+  });
+  var today = epToday(), wk = epWeekStart(today), week = 0;
+  EP.state.attempts.forEach(function(a){ if(a.date >= wk && a.date <= today) week++; });
+  return { groups: groups, total: EP.state.attempts.length, week: week };
+}
+function epRenderTracker(){
+  var d = epTrackerData();
+  var h = '<h3 class="sec">🗓️ Practice Tracker — day by day</h3>';
+  if(!d.total){
+    return h + '<div class="card"><p style="margin:4px 0;">No practice yet. When Sreshta finishes a paper or a drill, it will appear here, day by day. 🌈</p></div>';
+  }
+  var f = EP.trackerFilter || "all";
+  h += '<div class="trk-filter">'
+    + [["all", "All"], ["paper", "📝 Papers"], ["drill", "🎯 Drills"]].map(function(o){
+        return '<button class="chip sm' + (f === o[0]? " on" : "") + '" data-act="trk-filter" data-f="' + o[0] + '">' + o[1] + '</button>';
+      }).join("") + '</div>';
+  h += '<p class="mut" style="margin:4px 0 2px;">' + d.total + (d.total === 1? ' practice session' : ' practice sessions') + ' in all · ' + d.week + ' this week</p>';
+  var shown = 0;
+  d.groups.forEach(function(g){
+    var rows = g.rows.filter(function(a){ return f === "all" || epAttemptKind(a) === f; });
+    if(!rows.length) return;
+    h += '<div class="trk-group"><h4 class="trk-date">' + esc(epDateHeader(g.date)) + '</h4>' + rows.map(function(a){
+      var kind = epAttemptKind(a), subj = epSubject(epAttemptSubject(a));
+      var pct = a.total? Math.round(a.score / a.total * 100) : 0;
+      return '<button class="trk-row" data-act="trk-open" data-id="' + (a.examId || "") + '">'
+        + '<span class="trk-main"><span class="trk-t">' + subj.icon + ' ' + esc(subj.name) + ' • ' + esc(a.examName || "Practice")
+        + '<span class="trk-badge ' + kind + '">' + (kind === "drill"? "🎯 Drill" : "📝 Paper") + '</span></span>'
+        + '<span class="trk-s">' + a.score + '/' + a.total + ' marks · ' + pct + '% · ⏱ ' + epFmtSecs(a.secs) + '</span></span>'
+        + '<span class="trk-go">➜</span></button>';
+    }).join("") + '</div>';
+    shown += rows.length;
+  });
+  if(!shown) h += '<div class="card"><p style="margin:4px 0;">' + (f === "drill"? 'No drills yet — a drill starts from a finished paper, with "Practise my weak chapters". 🎯' : 'Nothing under this filter yet. 🌈') + '</p></div>';
+  return h;
+}
 
 /* ---------- screens ---------- */
 function show(id){
@@ -3894,7 +3972,11 @@ function epFinish(auto){
   if(s.timerInt){ clearInterval(s.timerInt); }
   var secs = Math.round((Date.now() - s.startedAt) / 1000);
   var m = epMark(s.items, s.picked);
+  var sessExam = s.examId? epExam(s.examId) : null;
+  var chSeen = {}, chList = [];
+  s.items.forEach(function(q){ if(q.chapter && !chSeen[q.chapter]){ chSeen[q.chapter] = 1; chList.push(q.chapter); } });
   var attempt = { id: epUid("att"), examId: s.examId, examName: s.examName, kind: s.kind,
+    subject: sessExam? sessExam.subject : "maths", chapters: chList,
     at: new Date().toISOString(), date: epToday(), score: m.score, total: s.items.length, secs: secs,
     loss: m.loss, sourceAttemptId: s.sourceAttemptId,
     items: s.items.map(function(q, i){ return { q:q.q, options:q.options, answer:q.answer, explain:q.explain, visual:q.visual, kind:q.kind, chapter:q.chapter, picked: s.picked[i] }; }) };
@@ -4089,6 +4171,7 @@ function epRenderDash(){
       + '<div>' + epDaysChip(ex) + (last? '<span class="ep-chip good">Latest: ' + last.score + '/' + last.total + '</span>' : '<span class="ep-chip">Not tried yet</span>') + '<span class="ep-chip">' + atts.length + (atts.length === 1? ' try' : ' tries') + '</span></div>'
       + '<div class="btnrow"><button class="btn teal small" data-act="dash-view" data-id="' + ex.id + '">View attempts &amp; progress</button></div></div>';
   });
+  h += epRenderTracker();
   /* Cross-exam weak chapters */
   var agg = {}, papers = 0;
   EP.state.attempts.forEach(function(a){ if(a.kind !== "paper") return; papers++; Object.keys(a.loss || {}).forEach(function(cid){ agg[cid] = (agg[cid] || 0) + a.loss[cid]; }); });
@@ -4175,6 +4258,8 @@ function epAct(act, id, node){
     case "skip-finish": epFinish(false); break;
     case "dash-new": epSetupStart(null); break;
     case "dash-view": EP.armArchive = null; epRenderDetail(id); show("scr-epdetail"); break;
+    case "trk-filter": EP.trackerFilter = node.getAttribute("data-f") || "all"; epRenderDash(); break;
+    case "trk-open": if(id && epExam(id)){ EP.armArchive = null; epRenderDetail(id); show("scr-epdetail"); } break;
     case "det-review": { var a2 = epAttempt(id); if(a2){ EP.resultReturn = "detail"; epRenderResult(a2, false); show("scr-epresult"); } break; }
     case "det-edit": epSetupStart(id); break;
     case "det-archive":
@@ -4234,7 +4319,7 @@ function epInit(){
   show("scr-access");
 }
 /* test hooks (used by the jsdom suite; harmless in the app) */
-window.EPApp = { EP: EP, epLoad: epLoad, epSave: epSave, epBuildPaper: epBuildPaper, epBuildDrill: epBuildDrill, epMark: epMark, epWeakFromLoss: epWeakFromLoss, epChapterName: epChapterName, epSetupStart: epSetupStart, epRenderDash: epRenderDash, epRenderHome: epRenderHome, epRenderDetail: epRenderDetail, epSig: epSig };
+window.EPApp = { EP: EP, epLoad: epLoad, epSave: epSave, epBuildPaper: epBuildPaper, epBuildDrill: epBuildDrill, epMark: epMark, epWeakFromLoss: epWeakFromLoss, epChapterName: epChapterName, epSetupStart: epSetupStart, epRenderDash: epRenderDash, epRenderHome: epRenderHome, epRenderDetail: epRenderDetail, epSig: epSig, epAttemptKind: epAttemptKind, epAttemptSubject: epAttemptSubject, epTrackerData: epTrackerData, epRenderTracker: epRenderTracker, epDateHeader: epDateHeader };
 if(document.getElementById("app")) epInit();
 
 </script>
